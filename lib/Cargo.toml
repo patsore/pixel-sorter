@@ -1,0 +1,8 @@
+[package]
+name = "pixel_sorter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image = "0.24.6"
+rayon = "1.7.0"

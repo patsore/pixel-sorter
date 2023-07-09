@@ -1,0 +1,12 @@
+[package]
+name = "pixel_sorter_gui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.release]
+debug = true
+
+[dependencies]
+pixel_sorter = { path = "./lib" }
