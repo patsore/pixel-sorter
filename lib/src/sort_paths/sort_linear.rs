@@ -1,7 +1,7 @@
 use crate::{sort_pixels_in_line, sort_pixels_in_line_new, Sorter};
-use std::sync::Mutex;
 use image::{GenericImage, GenericImageView};
 use rayon::prelude::*;
+use std::sync::Mutex;
 
 impl Sorter {
     pub fn sort_linear(&mut self) {
@@ -34,9 +34,7 @@ impl Sorter {
 
                 sort_pixels_in_line_new(&self.settings, &mut pixels);
 
-                let mut locked_image = mutex_img
-                    .lock()
-                    .expect("Couldn't acquire image lock");
+                let mut locked_image = mutex_img.lock().expect("Couldn't acquire image lock");
 
                 for ((idx_x, idx_y), px) in idxes.iter().zip(pixels.iter()) {
                     // mutex_img.lock().expect("Couldn't acquire image lock")

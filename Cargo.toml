@@ -10,3 +10,10 @@ debug = true
 
 [dependencies]
 pixel_sorter = { path = "./lib" }
+
+[dev-dependencies]
+criterion = "0.4"
+
+[[bench]]
+name = "my_benchmark"
+harness = false

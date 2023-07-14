@@ -2,4 +2,8 @@
 /lib/target
 image.jpg
 image-output.jpg
+.idea
 
+flamegraph.svg
+perf.data
+perf.data.old

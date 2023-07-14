@@ -1,6 +1,7 @@
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pixel_sorter::*;
 
-fn main() {
+pub fn criterion_benchmark(c: &mut Criterion) {
     let mut sorter = Sorter {
         original_image: Default::default(),
         settings: Settings {
@@ -17,15 +18,13 @@ fn main() {
     };
 
     sorter.open_image("./image.jpg");
-
-    use std::time::Instant;
-    let now = Instant::now();
-    sorter.sort();
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
-
-    sorter
-        .current_image
-        .save("./image-output.jpg")
-        .expect("Couldn't save image");
+    c.bench_function("sort", |b| {
+        b.iter(|| {
+            sorter.sort();
+            sorter.reset_current_image();
+        })
+    });
 }
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);
