@@ -1,0 +1,15 @@
+[package]
+name = "pixel-sorter"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# test
+
+[dependencies]
+fast_image_resize = "2.7.3"
+image = "0.24.7"
+rayon = "1.8.0"
+softbuffer = "0.4.0"
+tokio = { version = "1.35.1", features = ["full"] }
+winit = "0.29.6"
