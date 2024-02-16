@@ -6,3 +6,9 @@ pub use span_sort::*;
 pub trait SortMethod<P, R>{
     fn sort(&self, pixels: Vec<P>, line: usize) -> R;
 }
+
+#[derive(Debug, PartialEq, Default)]
+pub enum AvailableSortAlgos {
+    #[default]
+    SpanSort,
+}

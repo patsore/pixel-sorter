@@ -1,36 +1,28 @@
-use std::sync::mpsc::{channel, Receiver};
 use std::thread;
+use std::time::Instant;
 use eframe::epaint::Color32;
 use eframe::Frame;
 use image::Rgba;
 use egui::{ColorImage, ComboBox, Context, TextureFilter, TextureHandle, TextureId, TextureOptions};
 use egui::load::SizedTexture;
+use flume::Receiver;
 use image::{DynamicImage, GenericImage};
 use crate::sorter::{ScanlineSorter, Sorter, SpanSortConfig, SpanSortMethod};
+use crate::sorter::{AvailableLineAlgos, AvailableSortAlgos};
 
 #[derive(Default)]
 pub struct AppState {
     image: Option<DynamicImage>,
     egui_image: Option<ColorImage>,
     image_handle: Option<TextureHandle>,
-    change_receiver: Option<Receiver<PixelChanged>>,
+    change_receiver: Option<Receiver<SpanChanged>>,
     selected_line_algo: AvailableLineAlgos,
     selected_sort_algo: AvailableSortAlgos,
 }
 
 pub type PixelChanged = ((usize, usize), Rgba<u8>);
+pub type SpanChanged = Vec<PixelChanged>;
 
-#[derive(Debug, PartialEq, Default)]
-enum AvailableLineAlgos {
-    #[default]
-    Scanline,
-}
-
-#[derive(Debug, PartialEq, Default)]
-enum AvailableSortAlgos {
-    #[default]
-    SpanSort,
-}
 
 impl AppState {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
@@ -81,37 +73,31 @@ impl eframe::App for AppState {
 
             if ui.button("Do").clicked() {
                 if let Some(ref mut texture) = self.image_handle {
-                    let (sender, receiver) = channel::<PixelChanged>();
-                    // self.change_receiver = Some(receiver);
-                    let mut recv_tex = texture.clone();
-                    thread::spawn(move || {
-                        let mut i = 0;
-                        while let Ok(value) = receiver.recv() {
-                            i += 1;
-                            let [r, g, b, a] = value.1.0;
-                            recv_tex.set_partial([value.0.0, value.0.1], ColorImage::new([1, 1], Color32::from_rgba_unmultiplied(r, g, b, a)), Default::default());
-                            // println!("{:?}", value)
-                        }
-                    });
-                    let sort_algorithm = Box::new(match sort_algo {
+                    let (sender, receiver) = flume::unbounded::<SpanChanged>();
+                    self.change_receiver = Some(receiver);
+
+                    let sort_algorithm = match sort_algo {
                         AvailableSortAlgos::SpanSort => {
                             SpanSortMethod {
                                 config: SpanSortConfig {
-                                    threshold: 0..255,
+                                    threshold: 0..150,
                                 },
-                                sender,
+                                sender: Some(sender),
                             }
                         }
                         _ => {
                             panic!("Unimplemented sorting algorithm!")
                         }
-                    });
-                    let line_algorithm = match line_algo {
+                    };
+
+                    match line_algo {
                         AvailableLineAlgos::Scanline => {
                             let sorter = ScanlineSorter;
-                            let sorter_image = self.image.clone().unwrap();
+                            let mut sorter_image = self.image.clone().unwrap();
                             thread::spawn(move || {
+                                let start = Instant::now();
                                 sorter.sort_image(&sorter_image, sort_algorithm);
+                                println!("Sorting took {:?}", start.elapsed());
                             });
                         }
                     };
@@ -124,6 +110,22 @@ impl eframe::App for AppState {
                 let width = f32::min(ui.available_width(), ui.available_height() * texture.aspect_ratio());
                 let size = egui::vec2(width, width / texture.aspect_ratio());
 
+                if let Some(ref receiver) = self.change_receiver {
+                    let start = Instant::now();
+
+
+                    while let Ok(value) = receiver.recv() {
+                        let pixels = value.iter().map(|v| {
+                            let [r,g,b,a] = v.1.0;
+                            Color32::from_rgba_unmultiplied(r,g,b,a)
+                        }).collect::<Vec<_>>();
+                        texture.set_partial([value[0].0.0, value[0].0.1], ColorImage {
+                            size: [value.len(), 1],
+                            pixels,
+                        }, Default::default());
+                    }
+                    println!("Pushing took {:?}", start.elapsed());
+                }
 
                 ui.image(
                     SizedTexture {

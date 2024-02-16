@@ -1,16 +1,13 @@
 use std::mem;
 use std::ops::Range;
-use std::sync::mpsc::Sender;
+use flume::Sender;
 use image::Rgba;
-use crate::gui::PixelChanged;
+use crate::gui::{PixelChanged, SpanChanged};
 use crate::sorter::sort_algos::SortMethod;
-
 pub struct SpanSortMethod {
     pub config: SpanSortConfig,
-    pub sender: Sender<PixelChanged>,
+    pub sender: Option<Sender<SpanChanged>>,
 }
-
-
 pub struct SpanSortConfig {
     pub(crate) threshold: Range<u8>,
 }
@@ -43,11 +40,13 @@ impl SortMethod<Rgba<u8>, ()> for SpanSortMethod {
             span.sort_unstable_by(|a, b| {
                 sorting_method(&a.1).cmp(&sorting_method(&b.1))
             });
-            for i in 0..original_span.len(){
-                self.sender.send(PixelChanged::from(((original_span[i].0, line), span[i].1))).unwrap()
-            }
+            let span_changed = original_span.iter().enumerate().map(|(i, v)| {
+                PixelChanged::from(((v.0, line), span[i].1))
+            }).collect::<Vec<_>>();
+            self.sender.as_ref().unwrap().send(span_changed).unwrap();
         });
     }
+
 }
 
 pub fn threshold_method(pixel: &Rgba<u8>) -> u8 {
