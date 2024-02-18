@@ -1,8 +1,10 @@
+use std::path::PathBuf;
 use std::thread;
 use std::time::Instant;
 use eframe::Frame;
 use egui::{Button, Checkbox, Color32, ColorImage, ComboBox, Context, Direction, Layout, Stroke, TextureFilter, TextureHandle, TextureId, TextureOptions, Vec2};
 use egui::load::SizedTexture;
+use egui::panel::TopBottomSide;
 use image::{DynamicImage};
 use crate::sorter::{ScanlineSorter, Sorter, SortMethod, SpanSortConfig, SpanSortMethod};
 use crate::sorter::{AvailableLineAlgos, AvailableSortAlgos};
@@ -34,6 +36,21 @@ impl AppState {
             ..Default::default()
         }
     }
+
+    pub fn open_image(&mut self, path_buf: PathBuf) {
+        let image = image::open(path_buf).unwrap();
+        let size = [image.width() as _, image.height() as _];
+        let image_buffer = image.to_rgba8();
+        let pixels = image_buffer.as_flat_samples();
+        let color_image = ColorImage::from_rgba_unmultiplied(
+            size,
+            pixels.as_slice(),
+        );
+        if let Some(ref mut texture) = self.image_handle {
+            texture.set(color_image.clone(), Default::default())
+        }
+        self.egui_image = Some(color_image);
+    }
 }
 
 impl eframe::App for AppState {
@@ -47,6 +64,16 @@ impl eframe::App for AppState {
                 })
             });
         }
+
+        egui::TopBottomPanel::new(TopBottomSide::Top, "general_controls").show(ctx, |ui|
+            {
+                if ui.button("Open").clicked() {
+                    let task = rfd::FileDialog::new().pick_file();
+                    if let Some(file) = task {
+                        self.open_image(file);
+                    }
+                }
+            });
 
         egui::SidePanel::left("settings_panel").show(ctx, |ui| {
             ui.with_layout(Layout::default(), |ui| {
