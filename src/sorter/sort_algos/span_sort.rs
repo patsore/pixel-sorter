@@ -29,9 +29,10 @@ impl SortMethod<Color32, ()> for SpanSortMethod {
     }
 
     fn ui(&mut self, ui: &mut Ui) {
-        let min = Slider::new(&mut self.config.threshold.start, 0..=255).text("Lower bound of threshold");
+
+        let min = Slider::new(&mut self.config.threshold.start, 0..=255).text("Lower bound of threshold").drag_value_speed(0.1);
         ui.add(min);
-        let max = Slider::new(&mut self.config.threshold.end, 0..=255).text("Upper bound of threshold");
+        let max = Slider::new(&mut self.config.threshold.end, 0..=255).text("Upper bound of threshold").drag_value_speed(0.1);
         ui.add(max);
 
         ui.checkbox(&mut self.config.invert_threshold, "Invert threshold range?");

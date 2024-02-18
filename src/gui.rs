@@ -86,6 +86,7 @@ impl eframe::App for AppState {
                     .stroke(Stroke::from((1.0, Color32::from_additive_luminance(20))))
                     .show(ui, |ui| {
                         sort_algorithm.ui(ui);
+                        ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
                     });
 
                 let mut option_line_alg = Some(line_algorithm);
@@ -112,7 +113,7 @@ impl eframe::App for AppState {
                 });
 
                 let checkbox = Checkbox::new(&mut self.live_sort, "Sort Live?");
-                ui.add_sized(egui::vec2(50.0, 10.0), checkbox);
+                ui.add_sized(egui::vec2(100.0, 10.0), checkbox);
                 if self.live_sort {
                     if let Some(line_algorithm) = option_line_alg.take() {
                         let mut sorter_image = self.egui_image.clone().unwrap();
