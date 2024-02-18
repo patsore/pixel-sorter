@@ -9,6 +9,8 @@ use crate::sorter::SortMethod;
 pub trait Sorter<PixelType, ImageType, ReturnType, SortReturnType>
 {
     fn sort_image(&self, image: ImageType, sorter: impl SortMethod<PixelType, SortReturnType>) -> ReturnType;
+
+
 }
 
 

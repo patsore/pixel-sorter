@@ -1,13 +1,10 @@
 use std::thread;
 use std::time::Instant;
-use eframe::epaint::Color32;
 use eframe::Frame;
-use image::Rgba;
-use egui::{ColorImage, ComboBox, Context, TextureFilter, TextureHandle, TextureId, TextureOptions};
+use egui::{Button, Checkbox, Color32, ColorImage, ComboBox, Context, Direction, Layout, Stroke, TextureFilter, TextureHandle, TextureId, TextureOptions, Vec2};
 use egui::load::SizedTexture;
-use flume::Receiver;
-use image::{DynamicImage, GenericImage};
-use crate::sorter::{ScanlineSorter, Sorter, SpanSortConfig, SpanSortMethod};
+use image::{DynamicImage};
+use crate::sorter::{ScanlineSorter, Sorter, SortMethod, SpanSortConfig, SpanSortMethod};
 use crate::sorter::{AvailableLineAlgos, AvailableSortAlgos};
 
 #[derive(Default)]
@@ -15,18 +12,14 @@ pub struct AppState {
     image: Option<DynamicImage>,
     egui_image: Option<ColorImage>,
     image_handle: Option<TextureHandle>,
-    change_receiver: Option<Receiver<SpanChanged>>,
     selected_line_algo: AvailableLineAlgos,
     selected_sort_algo: AvailableSortAlgos,
+    live_sort: bool,
 }
-
-pub type PixelChanged = ((usize, usize), Rgba<u8>);
-pub type SpanChanged = Vec<PixelChanged>;
-
 
 impl AppState {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let image = image::open("image.jpeg").unwrap();
+        let image = image::open("output.jpeg").unwrap();
         let size = [image.width() as _, image.height() as _];
         let image_buffer = image.to_rgba8();
         let pixels = image_buffer.as_flat_samples();
@@ -44,7 +37,7 @@ impl AppState {
 }
 
 impl eframe::App for AppState {
-    fn update(&mut self, ctx: &Context, frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         if let Some(color_image) = self.egui_image.clone() {
             self.image_handle.get_or_insert_with(|| {
                 ctx.load_texture("image", color_image.clone(), TextureOptions {
@@ -56,53 +49,82 @@ impl eframe::App for AppState {
         }
 
         egui::SidePanel::left("settings_panel").show(ctx, |ui| {
-            let ref mut line_algo = self.selected_line_algo;
-            ComboBox::from_label("Line algorithm")
-                .selected_text(format!("{:?}", line_algo))
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(line_algo, AvailableLineAlgos::Scanline, "Horizontal Lines");
-                });
+            ui.with_layout(Layout::default(), |ui| {
+                let ref mut line_algo = self.selected_line_algo;
+                let ref mut sort_algo = self.selected_sort_algo;
+                ComboBox::from_label("Line algorithm")
+                    .selected_text(format!("{:?}", line_algo))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(line_algo, AvailableLineAlgos::Scanline, "Horizontal Lines");
+                    });
 
-            let ref mut sort_algo = self.selected_sort_algo;
-            ComboBox::from_label("Sorting algorithm")
-                .selected_text(format!("{:?}", sort_algo))
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(sort_algo, AvailableSortAlgos::SpanSort, "Sort against a threshold");
-                });
+                let line_algorithm = match line_algo {
+                    AvailableLineAlgos::Scanline => {
+                        ScanlineSorter
+                    }
+                };
 
+                ui.separator();
 
-            if ui.button("Do").clicked() {
-                if let Some(ref mut texture) = self.image_handle {
-                    let (sender, receiver) = flume::unbounded::<SpanChanged>();
-                    self.change_receiver = Some(receiver);
+                ComboBox::from_label("Sorting algorithm")
+                    .selected_text(format!("{:?}", sort_algo))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(sort_algo, AvailableSortAlgos::SpanSort(Default::default()), "Sort against a threshold");
+                    });
 
-                    let sort_algorithm = match sort_algo {
-                        AvailableSortAlgos::SpanSort => {
-                            SpanSortMethod {
-                                config: SpanSortConfig {
-                                    threshold: 0..150,
-                                },
-                                sender: Some(sender),
+                let mut sort_algorithm = match sort_algo {
+                    AvailableSortAlgos::SpanSort(sort_algorithm) => {
+                        sort_algorithm
+                    }
+                };
+
+                egui::Frame::none()
+                    .fill(Color32::from_additive_luminance(15))
+                    .rounding(10.0)
+                    .outer_margin(5.0)
+                    .inner_margin(10.0)
+                    .stroke(Stroke::from((1.0, Color32::from_additive_luminance(20))))
+                    .show(ui, |ui| {
+                        sort_algorithm.ui(ui);
+                    });
+
+                let mut option_line_alg = Some(line_algorithm);
+
+                ui.add_enabled_ui(!self.live_sort, |ui| {
+                    let button = Button::new("Sort!").min_size(Vec2::new(ui.available_width(), 10.0));
+                    if ui.add_sized(egui::vec2(ui.available_width(), 10.0), button).clicked() {
+                        if let Some(ref mut texture) = self.image_handle {
+                            if let Some(line_algorithm) = option_line_alg.take() {
+                                let mut sorter_image = self.egui_image.clone().unwrap();
+                                let mut texture_handle = self.image_handle.clone().unwrap();
+                                let t_sort_alg = sort_algorithm.clone();
+                                thread::spawn(move || {
+                                    let start = Instant::now();
+
+                                    line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
+                                    texture_handle.set(sorter_image, Default::default());
+
+                                    println!("Sorting took {:?}", start.elapsed());
+                                });
                             }
                         }
-                        _ => {
-                            panic!("Unimplemented sorting algorithm!")
-                        }
-                    };
+                    }
+                });
 
-                    match line_algo {
-                        AvailableLineAlgos::Scanline => {
-                            let sorter = ScanlineSorter;
-                            let mut sorter_image = self.image.clone().unwrap();
-                            thread::spawn(move || {
-                                let start = Instant::now();
-                                sorter.sort_image(&sorter_image, sort_algorithm);
-                                println!("Sorting took {:?}", start.elapsed());
-                            });
-                        }
-                    };
+                let checkbox = Checkbox::new(&mut self.live_sort, "Sort Live?");
+                ui.add_sized(egui::vec2(50.0, 10.0), checkbox);
+                if self.live_sort {
+                    if let Some(line_algorithm) = option_line_alg.take() {
+                        let mut sorter_image = self.egui_image.clone().unwrap();
+                        let mut texture_handle = self.image_handle.clone().unwrap();
+                        let t_sort_alg = sort_algorithm.clone();
+                        thread::spawn(move || {
+                            line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
+                            texture_handle.set(sorter_image, Default::default());
+                        });
+                    }
                 }
-            }
+            });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -110,28 +132,13 @@ impl eframe::App for AppState {
                 let width = f32::min(ui.available_width(), ui.available_height() * texture.aspect_ratio());
                 let size = egui::vec2(width, width / texture.aspect_ratio());
 
-                if let Some(ref receiver) = self.change_receiver {
-                    let start = Instant::now();
-
-
-                    while let Ok(value) = receiver.recv() {
-                        let pixels = value.iter().map(|v| {
-                            let [r,g,b,a] = v.1.0;
-                            Color32::from_rgba_unmultiplied(r,g,b,a)
-                        }).collect::<Vec<_>>();
-                        texture.set_partial([value[0].0.0, value[0].0.1], ColorImage {
-                            size: [value.len(), 1],
-                            pixels,
-                        }, Default::default());
-                    }
-                    println!("Pushing took {:?}", start.elapsed());
-                }
-
-                ui.image(
-                    SizedTexture {
-                        id: TextureId::from(texture),
-                        size,
-                    }).mark_changed();
+                ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+                    ui.image(
+                        SizedTexture {
+                            id: TextureId::from(texture),
+                            size,
+                        }).mark_changed();
+                });
             }
         },
         );

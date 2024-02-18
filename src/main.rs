@@ -1,13 +1,15 @@
-use image::{GenericImage, GenericImageView};
+#![feature(slice_split_at_unchecked)]
+
+
 use crate::gui::AppState;
-use crate::sorter::{Sorter};
+
 
 mod gui;
 
 mod sorter;
 
 fn main() {
-    let mut native_options = eframe::NativeOptions::default();
+    let native_options = eframe::NativeOptions::default();
 
     eframe::run_native(
         "Pixel Sorter",

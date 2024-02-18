@@ -1,64 +1,53 @@
-use std::mem;
 use std::ops::Range;
-use flume::Sender;
-use image::Rgba;
-use crate::gui::{PixelChanged, SpanChanged};
+use egui::{Color32, Slider, Ui};
 use crate::sorter::sort_algos::SortMethod;
+use rayon::prelude::*;
+
+#[derive(Clone, Default)]
 pub struct SpanSortMethod {
     pub config: SpanSortConfig,
-    pub sender: Option<Sender<SpanChanged>>,
 }
+
+#[derive(Clone, Default)]
 pub struct SpanSortConfig {
     pub(crate) threshold: Range<u8>,
+    pub(crate) invert_threshold: bool,
 }
 
-impl SortMethod<Rgba<u8>, ()> for SpanSortMethod {
-    fn sort(&self, pixels: Vec<Rgba<u8>>, line: usize) {
-        let mut spans = vec![];
-        let mut current_span_start: Option<Vec<_>> = None;
+impl SortMethod<Color32, ()> for SpanSortMethod {
+    fn sort(&self, pixels: &mut [Color32]) {
+        let spans = pixels.split_mut(|v| {
+            let is_in_threshold = self.config.threshold.contains(&threshold_method(v));
+            return if self.config.invert_threshold { is_in_threshold } else { !is_in_threshold };
+        });
 
-        for (i, pixel) in pixels.iter().enumerate() {
-            if self.config.threshold.contains(&threshold_method(pixel)) {
-                if let Some(ref mut current_span) = current_span_start {
-                    current_span.push((i, pixel.clone()));
-                } else {
-                    current_span_start = Some(vec![(i, pixel.clone())]);
-                }
-            } else if current_span_start.is_some() {
-                let span_start = mem::replace(&mut current_span_start, None);
-                spans.push(span_start.unwrap());
-            }
-        }
-
-        if current_span_start.is_some() {
-            let span_start = mem::replace(&mut current_span_start, None);
-            spans.push(span_start.unwrap());
-        }
-
-        spans.iter_mut().for_each(|span| {
-            let original_span = span.clone();
+        spans.par_bridge().for_each(|span| {
             span.sort_unstable_by(|a, b| {
-                sorting_method(&a.1).cmp(&sorting_method(&b.1))
-            });
-            let span_changed = original_span.iter().enumerate().map(|(i, v)| {
-                PixelChanged::from(((v.0, line), span[i].1))
-            }).collect::<Vec<_>>();
-            self.sender.as_ref().unwrap().send(span_changed).unwrap();
+                sorting_method(a).cmp(&sorting_method(b))
+            })
         });
     }
 
+    fn ui(&mut self, ui: &mut Ui) {
+        let min = Slider::new(&mut self.config.threshold.start, 0..=255).text("Lower bound of threshold");
+        ui.add(min);
+        let max = Slider::new(&mut self.config.threshold.end, 0..=255).text("Upper bound of threshold");
+        ui.add(max);
+
+        ui.checkbox(&mut self.config.invert_threshold, "Invert threshold range?");
+    }
 }
 
-pub fn threshold_method(pixel: &Rgba<u8>) -> u8 {
-    let [r, g, b, a] = pixel.0;
+pub fn threshold_method(pixel: &Color32) -> u8 {
+    let [r, g, b, _] = pixel.to_array();
 
     let average = r / 3 + g / 3 + b / 3;
 
     return average;
 }
 
-pub fn sorting_method(pixel: &Rgba<u8>) -> u8{
-    let [r, g, b, a] = pixel.0;
+pub fn sorting_method(pixel: &Color32) -> u8 {
+    let [r, g, b, _] = pixel.to_array();
 
     let average = r / 3 + g / 3 + b / 3;
 
