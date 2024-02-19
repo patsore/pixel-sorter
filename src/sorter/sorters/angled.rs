@@ -12,7 +12,6 @@ pub struct AngledSorter {
 //but it makes things go fast and it doesn't crash immediately so until I
 //decide to make a fix it's staying like this
 impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
-
     fn sort_image(&self, image: &mut ColorImage, sorter: impl SortMethod<Color32, ()>) -> () {
         let pixels: &mut Vec<Color32> = image.pixels.as_mut();
         let pixels_pointer = unsafe {
@@ -22,7 +21,9 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
         };
         let [w, h] = image.size;
 
-
+        if self.angle % 90.0 == 0.0 && self.angle != 0.0 {
+            return;
+        }
 
         let angle_tan = self.angle.to_radians().tan();
 
@@ -40,6 +41,7 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
                 .collect::<Vec<_>>();
 
             let mut angled_pixels = idxes
+                .iter()
                 .map(|(x, y)| unsafe { *pixels.get_unchecked(y * w + x) })
                 .collect::<Vec<_>>();
             sorter.sort(&mut angled_pixels[..]);

@@ -5,14 +5,15 @@ use eframe::Frame;
 use egui::{Button, Checkbox, Color32, ColorImage, ComboBox, Context, Direction, Layout, Stroke, TextureFilter, TextureHandle, TextureId, TextureOptions, Vec2};
 use egui::load::SizedTexture;
 use egui::panel::TopBottomSide;
-use image::{DynamicImage};
+use image::{DynamicImage, ImageBuffer, Rgba};
 use crate::sorter::{AngledSorter, ScanlineSorter, Sorter, SortMethod};
 use crate::sorter::{AvailableLineAlgos, AvailableSortAlgos};
 
 #[derive(Default)]
 pub struct AppState {
     image: Option<DynamicImage>,
-    egui_image: Option<ColorImage>,
+    original_image: Option<ColorImage>,
+    working_image: Option<ColorImage>,
     image_handle: Option<TextureHandle>,
     selected_line_algo: AvailableLineAlgos,
     selected_sort_algo: AvailableSortAlgos,
@@ -32,8 +33,19 @@ impl AppState {
 
         Self {
             image: Some(image),
-            egui_image: Some(color_image),
+            original_image: Some(color_image.clone()),
+            working_image: Some(color_image),
             ..Default::default()
+        }
+    }
+
+    pub fn save_image(&mut self, path_buf: PathBuf) {
+        if let Some(ref mut image) = self.working_image {
+            let [w, h] = image.size;
+            let pixels = image.as_raw();
+
+            let dyn_image = ImageBuffer::<Rgba<u8>, &[u8]>::from_raw(w as u32, h as u32, pixels).unwrap();
+            dyn_image.save(path_buf).unwrap();
         }
     }
 
@@ -49,13 +61,14 @@ impl AppState {
         if let Some(ref mut texture) = self.image_handle {
             texture.set(color_image.clone(), Default::default())
         }
-        self.egui_image = Some(color_image);
+        self.original_image = Some(color_image.clone());
+        self.working_image = Some(color_image);
     }
 }
 
 impl eframe::App for AppState {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        if let Some(color_image) = self.egui_image.clone() {
+        if let Some(color_image) = self.original_image.clone() {
             self.image_handle.get_or_insert_with(|| {
                 ctx.load_texture("image", color_image.clone(), TextureOptions {
                     magnification: TextureFilter::Nearest,
@@ -67,12 +80,30 @@ impl eframe::App for AppState {
 
         egui::TopBottomPanel::new(TopBottomSide::Top, "general_controls").show(ctx, |ui|
             {
-                if ui.button("Open").clicked() {
-                    let task = rfd::FileDialog::new().pick_file();
-                    if let Some(file) = task {
-                        self.open_image(file);
+                ui.horizontal(|ui| {
+                    if ui.button("Open").clicked() {
+                        let task = rfd::FileDialog::new().pick_file();
+                        if let Some(file) = task {
+                            self.open_image(file);
+                        }
                     }
-                }
+
+                    if ui.button("Save").clicked() {
+                        let task = rfd::FileDialog::new().save_file();
+                        if let Some(file) = task {
+                            self.save_image(file);
+                        }
+                    }
+
+                    if ui.button("Reset Image").clicked() {
+                        if let Some(ref mut texture) = self.image_handle {
+                            if let Some(ref mut image) = self.original_image {
+                                texture.set(image.clone(), Default::default());
+                                self.working_image = Some(image.clone());
+                            }
+                        }
+                    }
+                });
             });
 
         egui::SidePanel::left("settings_panel").show(ctx, |ui| {
@@ -120,23 +151,27 @@ impl eframe::App for AppState {
                     });
 
                 let mut option_line_alg = Some(line_algo.clone());
+                let mut sorter_image = Some(self.working_image.as_mut().unwrap());
 
                 ui.add_enabled_ui(!self.live_sort, |ui| {
                     let button = Button::new("Sort!").min_size(Vec2::new(ui.available_width(), 10.0));
                     if ui.add_sized(egui::vec2(ui.available_width(), 10.0), button).clicked() {
                         if let Some(ref mut texture) = self.image_handle {
                             if let Some(line_algorithm) = option_line_alg.take() {
-                                let mut sorter_image = self.egui_image.clone().unwrap();
-                                let mut texture_handle = self.image_handle.clone().unwrap();
-                                let t_sort_alg = sort_algo.clone();
-                                thread::spawn(move || {
-                                    let start = Instant::now();
+                                if let Some(mut sorter_image) = sorter_image.take() {
+                                    let mut texture_handle = self.image_handle.clone().unwrap();
+                                    let t_sort_alg = sort_algo.clone();
+                                    thread::scope(|scope| {
+                                        scope.spawn(move || {
+                                            let start = Instant::now();
 
-                                    line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
-                                    texture_handle.set(sorter_image, Default::default());
+                                            line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
+                                            texture_handle.set(sorter_image.clone(), Default::default());
 
-                                    println!("Sorting took {:?}", start.elapsed());
-                                });
+                                            println!("Sorting took {:?}", start.elapsed());
+                                        });
+                                    });
+                                }
                             }
                         }
                     }
@@ -146,13 +181,16 @@ impl eframe::App for AppState {
                 ui.add_sized(egui::vec2(100.0, 10.0), checkbox);
                 if self.live_sort {
                     if let Some(line_algorithm) = option_line_alg.take() {
-                        let mut sorter_image = self.egui_image.clone().unwrap();
-                        let mut texture_handle = self.image_handle.clone().unwrap();
-                        let t_sort_alg = sort_algo.clone();
-                        thread::spawn(move || {
-                            line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
-                            texture_handle.set(sorter_image, Default::default());
-                        });
+                        if let Some(mut sorter_image) = sorter_image.take() {
+                            let mut texture_handle = self.image_handle.clone().unwrap();
+                            let t_sort_alg = sort_algo.clone();
+                            thread::scope(|scope| {
+                                scope.spawn(move || {
+                                    line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
+                                    texture_handle.set(sorter_image.clone(), Default::default());
+                                });
+                            });
+                        }
                     }
                 }
             });
@@ -173,7 +211,7 @@ impl eframe::App for AppState {
             }
         },
         );
-        ctx.request_repaint();
+        // ctx.request_repaint();
     }
 }
 
