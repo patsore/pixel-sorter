@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use egui::{Color32, ColorImage, Slider, Ui};
 use rayon::prelude::*;
 use crate::sorter::sorters::Sorter;
@@ -21,27 +22,29 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
             0..(h as i64 - extra_height)
         };
 
-        let sorted_rows: std::collections::HashMap<_, _> = range.par_bridge().map(|row| {
+
+        let px_len = pixels.len();
+        let mut result_pixels_temp = range.par_bridge().map(|row| {
             let mut idxes = (0..w)
                 .par_bridge()
                 .map(|xv| (xv, (xv as f32 * angle_tan + row as f32) as usize))
                 .filter(|(_, y)| *y > 0 && *y < h)
                 .collect::<Vec<_>>();
+
             unsafe {
                 let mut pixels = idxes
                     .par_iter()
-                    .map(|(x, y)| pixels.get_unchecked((*y as usize * w) + *x).clone())
+                    .map(|&(x, y)| pixels.get_unchecked(y * w + x).clone())
                     .collect::<Vec<_>>();
                 sorter.sort(&mut pixels[..]);
-                idxes.drain(..).zip(pixels.drain(..)).collect::<Vec<_>>()
+                let index_px = idxes.drain(..).zip(pixels.drain(..)).collect::<Vec<_>>();
+                return index_px;
             }
-        }).flatten().collect();
+        }).flatten().collect::<Vec<_>>();
 
-        pixels.par_iter_mut().enumerate().for_each(|(i, p)| {
-            if let Some(value) = sorted_rows.get(&(i % w, i / w)) {
-                *p = *value;
-            }
-        });
+        for ((x, y), px) in result_pixels_temp {
+            pixels[y * w + x] = px;
+        }
     }
 
     fn ui(&mut self, ui: &mut Ui) {

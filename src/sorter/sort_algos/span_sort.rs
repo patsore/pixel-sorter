@@ -24,7 +24,7 @@ impl SortMethod<Color32, ()> for SpanSortMethod {
         });
 
         spans.for_each(|span| {
-            span.sort_unstable_by(|a, b| {
+            span.par_sort_unstable_by(|a, b| {
                 sorting_method(a).cmp(&sorting_method(b))
             })
         });
