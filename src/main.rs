@@ -1,4 +1,4 @@
-#![feature(slice_split_at_unchecked)]
+#![feature(slice_split_at_unchecked, vec_into_raw_parts)]
 
 
 use crate::gui::AppState;
