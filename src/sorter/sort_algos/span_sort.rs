@@ -16,12 +16,14 @@ pub struct SpanSortConfig {
 
 impl SortMethod<Color32, ()> for SpanSortMethod {
     fn sort(&self, pixels: &mut [Color32]) {
-        let spans = pixels.split_mut(|v| {
+
+
+        let spans = pixels.par_split_mut(|v| {
             let is_in_threshold = self.config.threshold.contains(&threshold_method(v));
             return if self.config.invert_threshold { is_in_threshold } else { !is_in_threshold };
         });
 
-        spans.par_bridge().for_each(|span| {
+        spans.for_each(|span| {
             span.sort_unstable_by(|a, b| {
                 sorting_method(a).cmp(&sorting_method(b))
             })

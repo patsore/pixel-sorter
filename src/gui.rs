@@ -6,7 +6,7 @@ use egui::{Button, Checkbox, Color32, ColorImage, ComboBox, Context, Direction, 
 use egui::load::SizedTexture;
 use egui::panel::TopBottomSide;
 use image::{DynamicImage};
-use crate::sorter::{ScanlineSorter, Sorter, SortMethod, SpanSortConfig, SpanSortMethod};
+use crate::sorter::{AngledSorter, ScanlineSorter, Sorter, SortMethod};
 use crate::sorter::{AvailableLineAlgos, AvailableSortAlgos};
 
 #[derive(Default)]
@@ -77,19 +77,28 @@ impl eframe::App for AppState {
 
         egui::SidePanel::left("settings_panel").show(ctx, |ui| {
             ui.with_layout(Layout::default(), |ui| {
+                ui.add_space(3.0);
                 let ref mut line_algo = self.selected_line_algo;
                 let ref mut sort_algo = self.selected_sort_algo;
                 ComboBox::from_label("Line algorithm")
                     .selected_text(format!("{:?}", line_algo))
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(line_algo, AvailableLineAlgos::Scanline, "Horizontal Lines");
+                        ui.selectable_value(line_algo, AvailableLineAlgos::Scanline(ScanlineSorter), "Horizontal Lines");
+                        ui.selectable_value(line_algo, AvailableLineAlgos::Angled(AngledSorter {
+                            angle: 0.0
+                        }), "Angled Lines");
                     });
 
-                let line_algorithm = match line_algo {
-                    AvailableLineAlgos::Scanline => {
-                        ScanlineSorter
-                    }
-                };
+                egui::Frame::none()
+                    .fill(Color32::from_additive_luminance(15))
+                    .rounding(10.0)
+                    .outer_margin(5.0)
+                    .inner_margin(10.0)
+                    .stroke(Stroke::from((1.0, Color32::from_additive_luminance(20))))
+                    .show(ui, |ui| {
+                        line_algo.ui(ui);
+                        ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
+                    });
 
                 ui.separator();
 
@@ -99,12 +108,6 @@ impl eframe::App for AppState {
                         ui.selectable_value(sort_algo, AvailableSortAlgos::SpanSort(Default::default()), "Sort against a threshold");
                     });
 
-                let mut sort_algorithm = match sort_algo {
-                    AvailableSortAlgos::SpanSort(sort_algorithm) => {
-                        sort_algorithm
-                    }
-                };
-
                 egui::Frame::none()
                     .fill(Color32::from_additive_luminance(15))
                     .rounding(10.0)
@@ -112,11 +115,11 @@ impl eframe::App for AppState {
                     .inner_margin(10.0)
                     .stroke(Stroke::from((1.0, Color32::from_additive_luminance(20))))
                     .show(ui, |ui| {
-                        sort_algorithm.ui(ui);
+                        sort_algo.ui(ui);
                         ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
                     });
 
-                let mut option_line_alg = Some(line_algorithm);
+                let mut option_line_alg = Some(line_algo.clone());
 
                 ui.add_enabled_ui(!self.live_sort, |ui| {
                     let button = Button::new("Sort!").min_size(Vec2::new(ui.available_width(), 10.0));
@@ -125,7 +128,7 @@ impl eframe::App for AppState {
                             if let Some(line_algorithm) = option_line_alg.take() {
                                 let mut sorter_image = self.egui_image.clone().unwrap();
                                 let mut texture_handle = self.image_handle.clone().unwrap();
-                                let t_sort_alg = sort_algorithm.clone();
+                                let t_sort_alg = sort_algo.clone();
                                 thread::spawn(move || {
                                     let start = Instant::now();
 
@@ -145,7 +148,7 @@ impl eframe::App for AppState {
                     if let Some(line_algorithm) = option_line_alg.take() {
                         let mut sorter_image = self.egui_image.clone().unwrap();
                         let mut texture_handle = self.image_handle.clone().unwrap();
-                        let t_sort_alg = sort_algorithm.clone();
+                        let t_sort_alg = sort_algo.clone();
                         thread::spawn(move || {
                             line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
                             texture_handle.set(sorter_image, Default::default());

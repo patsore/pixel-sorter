@@ -1,9 +1,10 @@
-use egui::{Color32, ColorImage};
+use egui::{Color32, ColorImage, Ui};
 
 use rayon::prelude::*;
 use crate::sorter::sorters::Sorter;
 use crate::sorter::SortMethod;
 
+#[derive(Clone)]
 pub struct ScanlineSorter;
 
 impl Sorter<Color32, &mut ColorImage, (), ()> for ScanlineSorter {
@@ -13,6 +14,10 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for ScanlineSorter {
         pixels.par_chunks_exact_mut(w).for_each(|row| {
             sorter.sort(row);
         });
+    }
+
+    fn ui(&mut self, ui: &mut Ui) {
+
     }
 }
 
