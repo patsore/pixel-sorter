@@ -40,6 +40,7 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
                 .collect::<Vec<_>>();
 
             let mut angled_pixels = idxes
+                .iter()
                 .map(|(x, y)| unsafe { *pixels.get_unchecked(y * w + x) })
                 .collect::<Vec<_>>();
             sorter.sort(&mut angled_pixels[..]);
