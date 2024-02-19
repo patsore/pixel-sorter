@@ -185,7 +185,7 @@ impl eframe::App for AppState {
                             let mut texture_handle = self.image_handle.clone().unwrap();
                             let t_sort_alg = sort_algo.clone();
                             //cloning this because otherwise live sorting will just mess the image up immediately.
-                            let sorter_image = sorter_image.clone();
+                            let mut sorter_image = sorter_image.clone();
                             thread::scope(|scope| {
                                 scope.spawn(move || {
                                     line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
