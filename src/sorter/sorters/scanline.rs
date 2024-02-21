@@ -1,8 +1,8 @@
 use egui::{Color32, ColorImage, Ui};
 
-use rayon::prelude::*;
 use crate::sorter::sorters::Sorter;
 use crate::sorter::SortMethod;
+use rayon::prelude::*;
 
 #[derive(Clone)]
 pub struct ScanlineSorter;
@@ -16,24 +16,5 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for ScanlineSorter {
         });
     }
 
-    fn ui(&mut self, ui: &mut Ui) {
-
-    }
+    fn ui(&mut self, ui: &mut Ui) {}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

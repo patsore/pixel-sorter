@@ -1,9 +1,10 @@
 mod span_sort;
 
-use std::fmt::{Debug, Formatter};
 use eframe::epaint::Color32;
 use egui::Ui;
 pub use span_sort::*;
+use std::fmt::{Debug, Formatter};
+use crate::sorter::Animateable;
 
 //T is the type that represents a pixel
 //A represents how we want data to be returned.
@@ -21,16 +22,25 @@ pub enum AvailableSortAlgos {
 impl SortMethod<Color32, ()> for AvailableSortAlgos {
     fn sort(&self, pixels: &mut [Color32]) -> () {
         match self {
-            AvailableSortAlgos::SpanSort(sort_algo) => {
-                sort_algo.sort(pixels)
-            }
+            AvailableSortAlgos::SpanSort(sort_algo) => sort_algo.sort(pixels),
         }
     }
 
     fn ui(&mut self, ui: &mut Ui) {
         match self {
-            AvailableSortAlgos::SpanSort(sort_algo) => {
-                sort_algo.ui(ui)
+            AvailableSortAlgos::SpanSort(sort_algo) => sort_algo.ui(ui),
+        }
+    }
+}
+
+impl Animateable for AvailableSortAlgos{
+    fn lerp(&mut self, target: &Self, weight: f32) {
+        match (self, target) {
+            (AvailableSortAlgos::SpanSort(sort_algo), AvailableSortAlgos::SpanSort(target)) => {
+                    sort_algo.lerp(target, weight);
+            },
+            _ => {
+                eprintln!("Either Self and Target don't match, or the type you're trying to interpolate doesn't implement animateable!");
             }
         }
     }
@@ -39,7 +49,10 @@ impl SortMethod<Color32, ()> for AvailableSortAlgos {
 impl Default for AvailableSortAlgos {
     fn default() -> Self {
         Self::SpanSort(SpanSortMethod {
-            config: SpanSortConfig { threshold: 0..255, invert_threshold: false },
+            config: SpanSortConfig {
+                threshold: 0..255,
+                invert_threshold: false,
+            },
         })
     }
 }
@@ -47,9 +60,7 @@ impl Default for AvailableSortAlgos {
 impl Debug for AvailableSortAlgos {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let variant_name = match self {
-            AvailableSortAlgos::SpanSort(_) => {
-                "SpanSort"
-            }
+            AvailableSortAlgos::SpanSort(_) => "SpanSort",
         };
         write!(f, "{}", variant_name)
     }
