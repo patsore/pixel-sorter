@@ -48,11 +48,13 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AvailableLineAlgos {
     }
 }
 
-impl Animateable for AvailableLineAlgos{
+impl Animateable for AvailableLineAlgos {
     fn lerp(&mut self, target: &Self, weight: f32) {
         match (self, target) {
-            (AvailableLineAlgos::Angled(line_alg), AvailableLineAlgos::Angled(target)) => line_alg.lerp(target, weight),
-            _ => println!("Skill issue!"),         
+            (AvailableLineAlgos::Angled(line_alg), AvailableLineAlgos::Angled(target)) => {
+                line_alg.lerp(target, weight)
+            }
+            _ => println!("Target and source mismatch, or lerp isn't implemented for this type!"),
         }
     }
 }

@@ -3,9 +3,7 @@
 use crate::gui::AppState;
 
 mod gui;
-
 mod sorter;
-mod anim_gui;
 
 fn main() {
     let native_options = eframe::NativeOptions::default();

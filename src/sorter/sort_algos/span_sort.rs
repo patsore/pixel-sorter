@@ -3,8 +3,8 @@ use std::ops::Range;
 use egui::{Color32, Slider, Ui};
 use rayon::prelude::*;
 
-use crate::sorter::Animateable;
 use crate::sorter::sort_algos::SortMethod;
+use crate::sorter::Animateable;
 
 #[derive(Clone, Default)]
 pub struct SpanSortMethod {
@@ -55,10 +55,18 @@ impl Animateable for SpanSortMethod {
         let new_threshold = {
             let threshold = &config.threshold;
             let target_threshold = &target_config.threshold;
-            let start_dif = (target_threshold.start as f32 - threshold.start as f32);
-            let end_dif = (target_threshold.end as f32 - threshold.end as f32);
-            let new_start = (if start_dif.is_sign_positive() { (threshold.start as f32 + start_dif * weight).ceil() } else { (threshold.start as f32 + start_dif * weight).floor() }) as u8;
-            let new_end = (if end_dif.is_sign_positive() { (threshold.end as f32 + end_dif * weight).ceil() } else { (threshold.end as f32 + end_dif * weight).floor() }) as u8;
+            let start_dif = target_threshold.start as f32 - threshold.start as f32;
+            let end_dif = target_threshold.end as f32 - threshold.end as f32;
+            let new_start = (if start_dif.is_sign_positive() {
+                (threshold.start as f32 + start_dif * weight).ceil()
+            } else {
+                (threshold.start as f32 + start_dif * weight).floor()
+            }) as u8;
+            let new_end = (if end_dif.is_sign_positive() {
+                (threshold.end as f32 + end_dif * weight).ceil()
+            } else {
+                (threshold.end as f32 + end_dif * weight).floor()
+            }) as u8;
 
             new_start..new_end
         };

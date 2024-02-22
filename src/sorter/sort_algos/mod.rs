@@ -1,10 +1,10 @@
 mod span_sort;
 
+use crate::sorter::Animateable;
 use eframe::epaint::Color32;
 use egui::Ui;
 pub use span_sort::*;
 use std::fmt::{Debug, Formatter};
-use crate::sorter::Animateable;
 
 //T is the type that represents a pixel
 //A represents how we want data to be returned.
@@ -33,12 +33,12 @@ impl SortMethod<Color32, ()> for AvailableSortAlgos {
     }
 }
 
-impl Animateable for AvailableSortAlgos{
+impl Animateable for AvailableSortAlgos {
     fn lerp(&mut self, target: &Self, weight: f32) {
         match (self, target) {
             (AvailableSortAlgos::SpanSort(sort_algo), AvailableSortAlgos::SpanSort(target)) => {
-                    sort_algo.lerp(target, weight);
-            },
+                sort_algo.lerp(target, weight);
+            }
             _ => {
                 eprintln!("Either Self and Target don't match, or the type you're trying to interpolate doesn't implement animateable!");
             }

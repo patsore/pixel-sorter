@@ -16,5 +16,5 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for ScanlineSorter {
         });
     }
 
-    fn ui(&mut self, ui: &mut Ui) {}
+    fn ui(&mut self, _ui: &mut Ui) {}
 }

@@ -1,8 +1,8 @@
+use crate::sorter::animation::Animateable;
 use crate::sorter::sorters::Sorter;
 use crate::sorter::SortMethod;
 use egui::{Color32, ColorImage, Slider, Ui};
 use rayon::prelude::*;
-use crate::sorter::animation::Animateable;
 #[derive(Clone)]
 pub struct AngledSorter {
     pub angle: f32,
@@ -66,9 +66,9 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
     }
 }
 
-impl Animateable for AngledSorter{
-    fn lerp(&mut self, target: &AngledSorter, weight: f32){
-        let mut angle = &mut self.angle;
+impl Animateable for AngledSorter {
+    fn lerp(&mut self, target: &AngledSorter, weight: f32) {
+        let angle = &mut self.angle;
         let target_angle = target.angle;
         let new_angle = *angle + (target_angle - *angle) * weight;
         *angle = new_angle;
