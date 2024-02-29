@@ -68,9 +68,6 @@ impl Sorter<Color32, &mut ColorImage, (), ()> for AngledSorter {
 
 impl Animateable for AngledSorter {
     fn lerp(&mut self, target: &AngledSorter, weight: f32) {
-        let angle = &mut self.angle;
-        let target_angle = target.angle;
-        let new_angle = *angle + (target_angle - *angle) * weight;
-        *angle = new_angle;
+        self.angle += ( target.angle - self.angle) * weight;
     }
 }

@@ -1,26 +1,48 @@
 use std::ops::Range;
 
-use egui::{Color32, Slider, Ui};
+use egui::{Color32, ComboBox, Slider, Ui};
 use rayon::prelude::*;
 
-use crate::sorter::sort_algos::SortMethod;
 use crate::sorter::Animateable;
+use crate::sorter::sort_algos::SortMethod;
 
 #[derive(Clone, Default)]
 pub struct SpanSortMethod {
     pub config: SpanSortConfig,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SpanSortConfig {
     pub(crate) threshold: Range<u8>,
+    pub threshold_method: fn(&Color32) -> u8,
+    threshold_method_name: String,
     pub(crate) invert_threshold: bool,
+
+    pub sorting_method: fn(&Color32) -> u8,
+    sorting_method_name: String,
+
+    id: u32,
+}
+
+impl Default for SpanSortConfig {
+    fn default() -> Self {
+        SpanSortConfig {
+            threshold: 0..255,
+            threshold_method: average,
+            threshold_method_name: "Average".to_string(),
+            invert_threshold: false,
+
+            sorting_method: average,
+            sorting_method_name: "Average".to_string(),
+            id: rand::random(),
+        }
+    }
 }
 
 impl SortMethod<Color32, ()> for SpanSortMethod {
     fn sort(&self, pixels: &mut [Color32]) {
         let spans = pixels.par_split_mut(|v| {
-            let is_in_threshold = self.config.threshold.contains(&threshold_method(v));
+            let is_in_threshold = self.config.threshold.contains(&(self.config.threshold_method)(v));
             return if self.config.invert_threshold {
                 is_in_threshold
             } else {
@@ -29,7 +51,7 @@ impl SortMethod<Color32, ()> for SpanSortMethod {
         });
 
         spans.for_each(|span| {
-            span.par_sort_unstable_by(|a, b| sorting_method(a).cmp(&sorting_method(b)))
+            span.par_sort_unstable_by(|a, b| (self.config.sorting_method)(a).cmp(&(self.config.sorting_method)(b)))
         });
     }
 
@@ -42,6 +64,69 @@ impl SortMethod<Color32, ()> for SpanSortMethod {
             .text("Upper bound of threshold")
             .drag_value_speed(0.1);
         ui.add(max);
+
+
+        let threshold_method = ComboBox::new(format!("threshold-{:?}", self.config.id), "Determine threshold value via")
+            .selected_text(self.config.threshold_method_name.clone())
+            .show_ui(ui, |ui| {
+                {
+                    let name = "Average";
+                    if ui.selectable_value(&mut self.config.threshold_method, average, name).clicked() {
+                        self.config.threshold_method_name = name.to_string();
+                    }
+
+                    let name = "Luminosity";
+                    if ui.selectable_value(&mut self.config.threshold_method, luminosity, name).clicked() {
+                        self.config.threshold_method_name = name.to_string();
+                    }
+
+                    let name = "Red";
+                    if ui.selectable_value(&mut self.config.threshold_method, red, name).clicked() {
+                        self.config.threshold_method_name = name.to_string();
+                    }
+
+                    let name = "Green";
+                    if ui.selectable_value(&mut self.config.threshold_method, green, name).clicked() {
+                        self.config.threshold_method_name = name.to_string();
+                    }
+
+                    let name = "Blue";
+                    if ui.selectable_value(&mut self.config.threshold_method, blue, name).clicked() {
+                        self.config.threshold_method_name = name.to_string();
+                    }
+                }
+            });
+
+        let sorting_method = ComboBox::new(format!("sort-{:?}", self.config.id), "Sort by")
+            .selected_text(self.config.sorting_method_name.clone())
+            .show_ui(ui, |ui| {
+                {
+                    let name = "Average";
+                    if ui.selectable_value(&mut self.config.sorting_method, average, name).clicked() {
+                        self.config.sorting_method_name = name.to_string();
+                    }
+
+                    let name = "Luminosity";
+                    if ui.selectable_value(&mut self.config.sorting_method, luminosity, name).clicked() {
+                        self.config.sorting_method_name = name.to_string();
+                    }
+
+                    let name = "Red";
+                    if ui.selectable_value(&mut self.config.sorting_method, red, name).clicked() {
+                        self.config.sorting_method_name = name.to_string();
+                    }
+
+                    let name = "Green";
+                    if ui.selectable_value(&mut self.config.sorting_method, green, name).clicked() {
+                        self.config.sorting_method_name = name.to_string();
+                    }
+
+                    let name = "Blue";
+                    if ui.selectable_value(&mut self.config.sorting_method, blue, name).clicked() {
+                        self.config.sorting_method_name = name.to_string();
+                    }
+                }
+            });
 
         ui.checkbox(&mut self.config.invert_threshold, "Invert threshold range?");
     }
@@ -75,7 +160,7 @@ impl Animateable for SpanSortMethod {
     }
 }
 
-pub fn threshold_method(pixel: &Color32) -> u8 {
+fn average(pixel: &Color32) -> u8 {
     let [r, g, b, _] = pixel.to_array();
 
     let average = r / 3 + g / 3 + b / 3;
@@ -83,10 +168,24 @@ pub fn threshold_method(pixel: &Color32) -> u8 {
     return average;
 }
 
-pub fn sorting_method(pixel: &Color32) -> u8 {
+fn luminosity(pixel: &Color32) -> u8 {
     let [r, g, b, _] = pixel.to_array();
 
-    let average = r / 3 + g / 3 + b / 3;
+    let luminosity = (0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32);
 
-    return average;
+    return luminosity.floor() as u8;
 }
+
+
+fn red(pixel: &Color32) -> u8 {
+    return pixel.r();
+}
+
+fn green(pixel: &Color32) -> u8 {
+    return pixel.g();
+}
+
+fn blue(pixel: &Color32) -> u8 {
+    return pixel.b();
+}
+

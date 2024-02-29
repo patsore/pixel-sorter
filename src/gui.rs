@@ -22,6 +22,7 @@ pub struct AppState {
     image_handle: Option<TextureHandle>,
     selected_line_algo: AvailableLineAlgos,
     selected_sort_algo: AvailableSortAlgos,
+    stack_changes: bool,
     live_sort: bool,
     anim_mode: bool,
     pub sort_keyframes: Vec<AvailableSortAlgos>,
@@ -149,28 +150,43 @@ impl AppState {
                         if let Some(mut texture_handle) = self.image_handle.clone() {
                             if let Some(line_algorithm) = option_line_alg.take() {
                                 if let Some(mut sorter_image) = sorter_image.take() {
-                                    let t_sort_alg = sort_algo.clone();
-                                    thread::scope(|scope| {
-                                        scope.spawn(move || {
-                                            let start = Instant::now();
+                                    if self.stack_changes {
+                                        let t_sort_alg = sort_algo.clone();
+                                        thread::scope(|scope| {
+                                            scope.spawn(move || {
+                                                let start = Instant::now();
 
-                                            line_algorithm
-                                                .sort_image(&mut sorter_image, t_sort_alg);
-                                            texture_handle
-                                                .set(sorter_image.clone(), Default::default());
+                                                line_algorithm
+                                                    .sort_image(&mut sorter_image, t_sort_alg);
+                                                texture_handle
+                                                    .set(sorter_image.clone(), Default::default());
 
-                                            println!("Sorting took {:?}", start.elapsed());
+                                                println!("Sorting took {:?}", start.elapsed());
+                                            });
                                         });
-                                    });
+                                    }else{
+                                        let t_sort_alg = sort_algo.clone();
+                                        let mut sorter_image = sorter_image.clone();
+                                        thread::scope(|scope| {
+                                            scope.spawn(move || {
+                                                line_algorithm.sort_image(&mut sorter_image, t_sort_alg);
+                                                texture_handle.set(sorter_image.clone(), Default::default());
+                                            });
+                                        });                                    }
                                 }
                             }
                         }
                     }
                 });
 
+		ui.horizontal(|ui| {
                 let checkbox = Checkbox::new(&mut self.live_sort, "Live Preview?");
                 ui.add_sized(egui::vec2(100.0, 10.0), checkbox);
-                if self.live_sort {
+                let checkbox = Checkbox::new(&mut self.stack_changes, "Stack image changes?");
+                ui.add_sized(egui::vec2(ui.available_width(), 10.0), checkbox);
+		}); 
+
+		if self.live_sort {
                     if let Some(line_algorithm) = option_line_alg.take() {
                         if let Some(sorter_image) = sorter_image.take() {
                             let mut texture_handle = self.image_handle.clone().unwrap();
@@ -364,11 +380,16 @@ impl eframe::App for AppState {
                                         target_line = line_keyframes.remove(0);
                                     }
                                 }
-                                let frames = 180.0;
-                                for _ in 0..frames as u16 {
+                                let frames = 360.0;
+                                for i in 0..frames as u16 {
+                                    let t = cubic_ease(i as f32 / frames);
+
+                                    let mut current_sort = current_sort.clone();
+                                    let mut current_line = current_line.clone();
+
                                     let mut sorting_image = image.clone();
-                                    current_sort.lerp(&target_sort, 0.01);
-                                    current_line.lerp(&target_line, 0.01);
+                                    current_sort.lerp(&target_sort, t);
+                                    current_line.lerp(&target_line, t);
                                     current_line
                                         .sort_image(&mut sorting_image, current_sort.clone());
                                     texture.set(sorting_image.clone(), Default::default());
@@ -409,11 +430,16 @@ impl eframe::App for AppState {
                                             target_line = line_keyframes.remove(0);
                                         }
                                     }
-                                    let frames = 180.0;
-                                    for _ in 0..frames as u16 {
+                                    let frames = 720.0;
+                                    for i in 0..frames as u16 {
+
+                                        let mut current_sort = current_sort.clone();
+                                        let mut current_line = current_line.clone();
+
+                                        let t = cubic_ease(i as f32 / frames);
                                         let mut sorting_image = image.clone();
-                                        current_sort.lerp(&target_sort, 1.0 / frames);
-                                        current_line.lerp(&target_line, 1.0 / frames);
+                                        current_sort.lerp(&target_sort, t);
+                                        current_line.lerp(&target_line, t);
                                         current_line
                                             .sort_image(&mut sorting_image, current_sort.clone());
                                         texture.set(sorting_image.clone(), Default::default());
@@ -456,6 +482,10 @@ impl eframe::App for AppState {
         });
         ctx.request_repaint();
     }
+}
+
+fn cubic_ease(t: f32) -> f32 {
+    t * t * (3.0 - 2.0 * t)
 }
 
 pub fn new_config_frame() -> egui::containers::Frame {

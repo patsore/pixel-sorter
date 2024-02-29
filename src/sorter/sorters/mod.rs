@@ -53,6 +53,9 @@ impl Animateable for AvailableLineAlgos {
         match (self, target) {
             (AvailableLineAlgos::Angled(line_alg), AvailableLineAlgos::Angled(target)) => {
                 line_alg.lerp(target, weight)
+            },
+            (AvailableLineAlgos::Scanline(_), AvailableLineAlgos::Scanline(_)) => {
+
             }
             _ => println!("Target and source mismatch, or lerp isn't implemented for this type!"),
         }

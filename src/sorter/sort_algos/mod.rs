@@ -38,7 +38,7 @@ impl Animateable for AvailableSortAlgos {
         match (self, target) {
             (AvailableSortAlgos::SpanSort(sort_algo), AvailableSortAlgos::SpanSort(target)) => {
                 sort_algo.lerp(target, weight);
-            }
+            },
             _ => {
                 eprintln!("Either Self and Target don't match, or the type you're trying to interpolate doesn't implement animateable!");
             }
@@ -48,12 +48,7 @@ impl Animateable for AvailableSortAlgos {
 
 impl Default for AvailableSortAlgos {
     fn default() -> Self {
-        Self::SpanSort(SpanSortMethod {
-            config: SpanSortConfig {
-                threshold: 0..255,
-                invert_threshold: false,
-            },
-        })
+        Self::SpanSort(Default::default())
     }
 }
 
