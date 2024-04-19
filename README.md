@@ -17,6 +17,8 @@ Out of what I've seen, this might be the **world's fastest** pixel sorter. Feel 
 
 ## Usage
 
+IF YOU WANT YOUR CHANGES TO ACTUALLY APPLY TO THE IMAGE YOU HAVE TO CHECK THE "stack image changes" checkbox.
+
 To get the binary, head over to the [releases]() and grab the latest binary. There might be some issues, but most of the basic functionality should work fine.
 
 If you need more custom functionality and can read and write Rust, I'd recommend getting the source and compiling it yourself. I don't think there's anything custom you'd need for this. 
