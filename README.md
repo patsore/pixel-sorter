@@ -11,6 +11,8 @@ Out of what I've seen, this might be the **world's fastest** pixel sorter. Feel 
 
 ## Examples 
 
+![sorted birds](https://github.com/patsore/pixel-sorter/assets/80210497/3e2b9118-a115-4ab4-ba05-7e9451b0d1b8)
+
 ![sorted image 1](https://github.com/patsore/pixel-sorter/blob/main/image-out-1.jpeg?raw=true)
 
 ## Usage
