@@ -1,4 +1,4 @@
-# A blazingly fast 🚀 fast [pixel sorter](https://github.com/kimasendorf/ASDFPixelSort) written in Rust
+# A blazingly fast 🚀 [pixel sorter](https://github.com/kimasendorf/ASDFPixelSort) written in Rust
 
  With a GUI written with egui, and custom sorting logic behind it, this pixel sorter offers
  - Simple, thresholded sorting
