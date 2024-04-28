@@ -7,7 +7,7 @@
 
 All of this is done quite quickly (I haven't done any benchmarks but simple sorting runs in about 15ms on my laptop (Ryzen 5 3500U) for a full-HD image). This makes real-time sorting of video theoretically possible.
 
-Out of what I've seen, this might be the **world's fastest** pixel sorter. Feel free to open an issue if that's not the case, I've only done some surface-level research. I have not tried the After Effects/Premiere Pro plugin.
+Out of what I've seen, this might be the **world's fastest** pixel sorter (on the CPU, GPGPU or shaders would probably be faster). Feel free to open an issue if that's not the case, I've only done some surface-level research. I have not tried the After Effects/Premiere Pro plugin.
 
 ## Examples 
 
